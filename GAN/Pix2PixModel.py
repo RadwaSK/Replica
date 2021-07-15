@@ -261,21 +261,33 @@ def save_samples(rn, src_imgs, gen_imgs, tar_imgs):
         cv.imwrite(path + '/' + str(i) + 'tar_image.jpg', img)
 
 
-if __name__ == '__main__':
+def callGAN(data_ready, subject_name, run_number, train, test, first_run, st1, sz1, st2, sz2, n_epochs=200,
+            d_model_name=None, g_model_name=None, gan_model_name=None, last_saved_model_name=None):
+    '''
+    Function to call GAN model with many options.
+
+    :param data_ready: Boolean: if the data is ready in npz file or not
+    :param subject_name: String
+    :param run_number: Integer
+    :param train: Boolean: train or not
+    :param test: Boolean: Test or not
+    :param first_run: Boolean: if no pre-saved models exist for the subject or not
+    :param st1: start index of training data
+    :param sz1: size of training data
+    :param st2: start index of testing data
+    :param sz2: size of testing data
+    :param n_epochs: number of epochs
+    :param d_model_name: Discriminator model name in case of pre-saved
+    :param g_model_name: Generator model name in case of pre-saved
+    :param gan_model_name: GAN model name in case of pre-saved
+    :param last_saved_model_name: Generator model name, in case of testing only
+    :return: None
+    '''
+
     print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
-    data_ready = input("\n\nEnter 'y' if data is ready in a npz file, 'n' if not: ") == 'y'
-    subject_name = input('Enter subject name: ')
-    run_number = input('Enter run number: ')
-    train = input("Enter 'y' to train, 'n' for not: ") == 'y'
-    test = input("Enter 'y' to test, 'n' if : ") == 'y'
-    first_run = input("Enter 'y' if first run for subject, 'n' if there is pre-saved GAN models: ") == 'y'
 
-    st1 = int(input('Enter beginning index of training data: '))
-    en1 = int(input('Enter size of training data: ')) + st1
-    st2 = int(input('Enter beginning index of testing data: '))
-    en2 = int(input('Enter size of testing data: ')) + st2
-
-    n_ep = int(input("Enter number of epochs: "))
+    en1 = sz1 + st1
+    en2 = sz2 + st2
 
     if data_ready:
         train_filename1 = 'compressed_data/' + subject_name + '_train_images' + str(st1) + '-' + str(en1) + '.npz'
@@ -289,9 +301,9 @@ if __name__ == '__main__':
     global last_saved_model
     last_saved_model = None
     if not first_run:
-        d_model_name = 'models/' + input("Enter discriminator model name: ")
-        last_saved_model = g_model_name = 'models/' + input("Enter generator model name: ")
-        gan_model_name = 'models/' + input("Enter GAN model name: ")
+        d_model_name = 'models/' + d_model_name
+        last_saved_model = g_model_name = 'models/' + g_model_name
+        gan_model_name = 'models/' + gan_model_name
 
     if train:
         X1_images = load_compressed_dataset(train_filename1)
@@ -319,13 +331,17 @@ if __name__ == '__main__':
 
     if test:
         if last_saved_model is None:
-            last_saved_model = 'models/' + input('Enter g_model name: ')
+            last_saved_model = 'models/' + last_saved_model_name
+
         gen_model = load_model(last_saved_model)
+        print("Model is loaded.\n")
 
         XX2_images = load_compressed_dataset(val_filename1)
         XX1_poses = load_compressed_dataset(val_filename2)
 
         gen_model.summary()
+
+        print("\nStart generating data...")
 
         gen_images = gen_model.predict(XX1_poses, batch_size=16)
 

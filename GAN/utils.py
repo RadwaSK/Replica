@@ -35,11 +35,11 @@ def load_dataset(subject_path, st1, en1, st2, en2, train=True, read_images=True,
     return np.array(np.array(images_list))
 
 
-def read_and_save(subject, st1, en1, st2, en2, abs_path=None):
-    if abs_path is None:
-        path = '/media/inno/500gigaExtra/Replica/datasets/' + subject
+def read_and_save(subject, st1, en1, st2, en2, dataset_path=None):
+    if dataset_path is None:
+        path = os.getcwd() + '/datasets/' + subject
     else:
-        path = abs_path + subject
+        path = dataset_path + subject
 
     train_images = load_dataset(path, st1, en1, st2, en2, train=True, read_images=True)
     print('Loaded: ', train_images.shape)
