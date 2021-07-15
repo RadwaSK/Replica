@@ -1,6 +1,7 @@
 datasets/**
 **/*.npz
 .vscode/**
+videos/
 .idea/**
 
 # Byte-compiled / optimized / DLL files
