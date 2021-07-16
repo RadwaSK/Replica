@@ -1,6 +1,7 @@
 datasets/**
 **/*.npz
 .vscode/**
+videos/
 .idea/**
 videos/
 
