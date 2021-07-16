@@ -1022,7 +1022,7 @@ def build_pose(image_R,foreground_image,body_parts_list,bp_priority_based,poster
   return body_parts_list,bp_priority_based,posterior_prob
 
 
-def complete_video(frames_list, foreground_list, prev_frames, body_parts_list, bp_priority_based, posterior_prob, main_number):
+def complete_video(frames_names_list, foreground_names_list, prev_frames, body_parts_list, bp_priority_based, posterior_prob, main_number):
   main_body_parts_list = body_parts_list.copy()
   main_bp_priority_based = bp_priority_based.copy()
   main_posterior_prob = posterior_prob.copy()
@@ -1030,7 +1030,7 @@ def complete_video(frames_list, foreground_list, prev_frames, body_parts_list, b
     frame = prev_frames[i]
     print("main = ", main_number)
     print("number    =  ", i, i+100)
-    foreground_image = foreground_list[i]
+    foreground_image = cv.imread(foreground_names_list[i])
     foreground_image = cv.cvtColor(foreground_image, cv.COLOR_RGB2GRAY)
     body_parts_list,bp_priority_based,posterior_prob = build_pose(frame,foreground_image,body_parts_list,bp_priority_based,posterior_prob,2,out1,out2,i+600, foreground_area, w)
   print("-----------------next---------------")
@@ -1038,8 +1038,8 @@ def complete_video(frames_list, foreground_list, prev_frames, body_parts_list, b
   bp_priority_based = main_bp_priority_based.copy()
   posterior_prob = main_posterior_prob.copy()
   for i in range(main_number+1,650):
-    frame = frames_list[i]
-    foreground_image = foreground_list[i]
+    frame = cv.imread(frames_names_list[i])
+    foreground_image = cv.imread(foreground_names_list[i])
     foreground_image = cv.cvtColor(foreground_image, cv.COLOR_RGB2GRAY)
     body_parts_list,bp_priority_based,posterior_prob = build_pose(frame,foreground_image,body_parts_list,bp_priority_based,posterior_prob,2,out1,out2,i,foreground_area, w)
 
@@ -1048,14 +1048,17 @@ def get_poses(frames_path, segmented_frames_path):
   frames_names = os.listdir(frames_path)
   frames_names = sorted(frames_names)
   frames_count = len(frames_names)
+  frames_full_names = [frames_path + '/' + frames_names[i] for i in range(frames_count)]
   segmented_frames_names = os.listdir(segmented_frames_path)
   segmented_frames_names = sorted(segmented_frames_names)
+  segmented_full_names = [segmented_frames_path + '/' + segmented_frames_names[i] for i in range(frames_count)]
+  
   prev_frames = []
   for i in range(frames_count):
-    frame = cv.imread(frames_path + '/' + frames_names[i])
+    frame = cv.imread(frames_full_names[i])
     prev_frames.append(frame)
     print("processing ", frames_path, '/', frames_names[i], sep='')
-    foreground_image = cv.imread(segmented_frames_path + '/' + segmented_frames_names[i], cv.IMREAD_COLOR)
+    foreground_image = cv.imread(segmented_full_names[i], cv.IMREAD_COLOR)
     foreground_area = np.count_nonzero(foreground_image[foreground_image == 255])
     faces = face_detection(frame, foreground_image)
     if faces != ():
@@ -1102,4 +1105,6 @@ def get_poses(frames_path, segmented_frames_path):
   main_bp_priority_based1 = bp_priority_based.copy()
   main_posterior_prob1 = posterior_prob.copy()
 
-  complete_video(cap, prev_frames, body_parts_list, bp_priority_based, posterior_prob, main_number)
+  complete_video(frames_full_names, segmented_frames_path, prev_frames, body_parts_list, bp_priority_based, posterior_prob, main_number)
+
+get_poses('datasets/source3_frames', 'datasets/source3_segmented')
