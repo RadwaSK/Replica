@@ -106,36 +106,6 @@ def compute_cp(foreground, background, cielab):
     return cp/len(distance_list), distance_list
 
 
-# def color_thresholding_cs(seg_img,clusters, cielab):
-#     #get foreground background adjacent pairs
-#     adj_pairs = get_adjacent_clusters(seg_img, clusters)
-#     cs, distance_list = compute_cs(adj_pairs, cielab)
-    
-#     repeat = False
-   
-#     updated_img = np.copy(seg_img)
-#     while True:
-#         invert_list = []
-#         for pair,dst in zip(adj_pairs,distance_list):
-#             if (dst > cs):
-#                 invert_list.append(pair[1])
-#                 repeat = True
-#         for reg in invert_list:
-#             pts = np.argwhere(clusters == reg)
-#             for x,y in pts:
-#                 updated_img[x,y] = 255
-#         show_image(updated_img)
-#         if repeat:
-#             #The relabeling is repeated until there is no change in the labels of the segments.
-#             adj_pairs = get_adjacent_clusters(updated_img, clusters)
-#             cs, distance_list = compute_cs(adj_pairs, cielab)
-#             repeat = False
-#         else:
-#             break
-            
-#     return updated_img            
-
-
 def superpixels_slic(img, k):
     results = slic(img, n_segments = k, sigma = 5)
     # img = cv.cvtColor(img, cv.COLOR_BGR2RGB)
@@ -175,7 +145,7 @@ def get_cielab(img):
     return gray, lab
 
 
-def get_forground(superpixels):
+def get_forground(superpixels, dframe, lab):
     clusters = superpixels.copy()
     forground = []
     new_dframe = np.zeros((dframe.shape[0], dframe.shape[1]))
@@ -220,14 +190,8 @@ def get_background(frame, medians):
         rand1 = random.randint(0, length-1)
         rand2 = random.randint(0, length-1)
         if rand1 != rand2:
-            print(rand1, rand2)
             background = build_background(medians[rand1], medians[rand2], background, modified)
     return background
-
-  #medianFrame = np.median(medians, axis=0).astype(dtype=np.uint8) 
-
-  # Display median frame (as background)
-  #show_image(medianFrame)
 
 
 def get_medians(frames_count, frames_path, frames_names, num_median=100):
@@ -243,27 +207,13 @@ def get_medians(frames_count, frames_path, frames_names, num_median=100):
                 break
             frame = cv.imread(frames_path + '/' + frames_names[j])
             j += 1
-            # cv.imshow('frame', frame)
-            # cv.waitKey()
-            if fid == 20:
-                print(frame[0,:,0])
             frames.append(frame)
-    # Calculate medianFrame through the timeline
+        # Calculate medianFrame through the timeline
         median = np.median(frames, axis=0).astype(dtype=np.uint8) 
-        # median = cv.cvtColor(median, cv.COLOR_BGR2RGB)
+        median = cv.cvtColor(median, cv.COLOR_BGR2RGB)
         medians.append(median) 
         if end == 1:
             break
-    print(np.amax(medians))
-    print(np.amin(medians))
-    print(medians[0].shape)
-    print(len(medians))
-    
-    print(np.amax(frame))
-    print(np.amin(frame))
-    print(frame.shape)
-    cv.imshow('frame', frame)
-    cv.waitKey()
     return medians, frame
 
 
@@ -283,12 +233,11 @@ def segment_images(frames_path, segmented_images_path):
     medians, frame = get_medians(frames_count, frames_path, frames_names)
     print("Done calculating frames")
     
-    background = get_background(frame, medians).astype(np.float32)
-    cv.imshow('backgroun', background)
+    background = get_background(frame, medians)
+    cv.imshow('background', background)
     cv.waitKey()
     grayMedianFrame = cv.cvtColor(background, cv.COLOR_BGR2GRAY)
-    grayMedianFrame = background[:,:,0]
-
+    
     for i in range(frames_count):
         print('processing frame: ', frames_path, '/', frames_names[i], sep='')
         frame = cv.imread(frames_path + '/' + frames_names[i])
@@ -298,6 +247,7 @@ def segment_images(frames_path, segmented_images_path):
         _, dframe = cv.threshold(dframe, 30, 255, cv.THRESH_BINARY)
         frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
         superpixels = superpixels_slic(frame, 300)
+        gray,lab = get_cielab(frame)
         centers = get_centers(superpixels, frame, 300)
 
         kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (2,2))
@@ -308,7 +258,7 @@ def segment_images(frames_path, segmented_images_path):
         closing = cv.morphologyEx(closing, cv.MORPH_CLOSE, kernel)
         closing = cv.morphologyEx(closing, cv.MORPH_CLOSE, kernel)
         
-        foreground, _ = get_forground(superpixels)
+        foreground, _ = get_forground(superpixels, dframe, lab)
         
         thresh_img = color_threshold(superpixels,foreground, centers)
         
@@ -316,5 +266,3 @@ def segment_images(frames_path, segmented_images_path):
         print('saving frame: ', file_name)
         cv.imwrite(file_name, thresh_img)
         
-
-segment_images('datasets/sample3', 'datasets/sample3_segmented')
