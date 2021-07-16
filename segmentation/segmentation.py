@@ -243,13 +243,27 @@ def get_medians(frames_count, frames_path, frames_names, num_median=100):
                 break
             frame = cv.imread(frames_path + '/' + frames_names[j])
             j += 1
+            # cv.imshow('frame', frame)
+            # cv.waitKey()
+            if fid == 20:
+                print(frame[0,:,0])
             frames.append(frame)
     # Calculate medianFrame through the timeline
         median = np.median(frames, axis=0).astype(dtype=np.uint8) 
-        median = cv.cvtColor(median, cv.COLOR_BGR2RGB)
+        # median = cv.cvtColor(median, cv.COLOR_BGR2RGB)
         medians.append(median) 
         if end == 1:
             break
+    print(np.amax(medians))
+    print(np.amin(medians))
+    print(medians[0].shape)
+    print(len(medians))
+    
+    print(np.amax(frame))
+    print(np.amin(frame))
+    print(frame.shape)
+    cv.imshow('frame', frame)
+    cv.waitKey()
     return medians, frame
 
 
@@ -269,13 +283,8 @@ def segment_images(frames_path, segmented_images_path):
     medians, frame = get_medians(frames_count, frames_path, frames_names)
     print("Done calculating frames")
     
-    print(frame.shape)
-    cv.imshow('frame', frame)
-    background = get_background(frame, medians)
-    print(background.shape)
-    print(np.amax(background))
-    print(np.amin(background))
-    cv.imshow('background', background)
+    background = get_background(frame, medians).astype(np.float32)
+    cv.imshow('backgroun', background)
     cv.waitKey()
     grayMedianFrame = cv.cvtColor(background, cv.COLOR_BGR2GRAY)
     grayMedianFrame = background[:,:,0]
@@ -308,4 +317,4 @@ def segment_images(frames_path, segmented_images_path):
         cv.imwrite(file_name, thresh_img)
         
 
-segment_images('datasets/sample2', 'datasets/sample2_segmented')
+segment_images('datasets/sample3', 'datasets/sample3_segmented')
