@@ -217,10 +217,6 @@ def get_medians(frames_count, frames_path, frames_names, num_median=100):
     return medians, frame
 
 
-def save_image(path, img):
-    plt.imsave(path, img, cmap='gray', vmin=0, vmax=255)
-
-
 def segment_images(frames_path, segmented_images_path):
     if not os.path.exists(segmented_images_path):
         os.makedirs(segmented_images_path)
