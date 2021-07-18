@@ -16,7 +16,7 @@ pose_net = model_zoo.get_model('simple_pose_resnet18_v1b', pretrained=True)
 
 detector.reset_class(["person"], reuse_weights=['person'])
 
-def get_poses_using_model(frames_path, poses_path):
+def get_poses_using_mxnet_model(frames_path, poses_path):
   if not os.path.exists(poses_path):
     os.makedirs(poses_path)
 

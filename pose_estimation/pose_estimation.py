@@ -117,7 +117,7 @@ def get_body_height(fore):
 
 def get_torso_center(foreImage):
     distMap= cv.distanceTransform(foreImage, cv.DIST_L2, 5)
-    yTorso, xTorso = np.where(distMap == np.amax(distMap))
+    (yTorso, xTorso) = np.where(distMap == np.amax(distMap))
     return (xTorso[0], yTorso[0])
 
 
@@ -148,23 +148,24 @@ def get_torso_angle(foreImage):
   # get horizontal histogram
   num_rows = foreImage.shape[0]
   distMap= cv.distanceTransform(foreImage, cv.DIST_L2, 5)
-  yFirst, xFirst = np.where(distMap == np.amax(distMap))
+  (yFirst, xFirst) = np.where(distMap == np.amax(distMap))
   xFirst = int(xFirst[0])
   yFirst = int(yFirst[0])
 
   cropped_image = fore[min(yFirst + 5, num_rows - 1):, ]
 
   distMap= cv.distanceTransform(cropped_image, cv.DIST_L2, 5)
-  ySecond, xSecond = np.where(distMap == np.amax(distMap))
+  (ySecond, xSecond) = np.where(distMap == np.amax(distMap))
   xSecond = int(xSecond[0])
   ySecond = int(ySecond[0]) + min(yFirst + 5, num_rows - 1)
   
   if abs(ySecond - yFirst) < 30:
     cropped_image = fore[0:max(yFirst - 5, 0), ]
-    distMap= cv.distanceTransform(cropped_image, cv.DIST_L2, 5)
-    ySecond, xSecond = np.where(distMap == np.amax(distMap))
-    xSecond = int(xSecond[0])
-    ySecond = int(ySecond[0])
+    distMap = cv.distanceTransform(cropped_image, cv.DIST_L2, 5)
+    if not distMap is None:
+      (ySecond, xSecond) = np.where(distMap == np.amax(distMap))
+      xSecond = int(xSecond[0])
+      ySecond = int(ySecond[0])
     
   deltaY = ySecond - yFirst
   deltaX = xSecond - xFirst
@@ -533,7 +534,7 @@ def draw_bounding_lines(img, data):
 # FLAG !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 def face_detection(image, foreground_image):
   gray  = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
-  faceCascade = cv.CascadeClassifier("/content/drive/MyDrive/Colab Notebooks/pose/haarcascade_frontalface_default.xml")
+  faceCascade = cv.CascadeClassifier("frontface_info.xml")
   faces = faceCascade.detectMultiScale(
       gray,
       scaleFactor=1.1,
@@ -748,12 +749,11 @@ def draw_all(img,body_parts_list):
     return image
 
 
-def draw_video_frame(img, body_parts_list, out1, out2,i):
+def draw_video_frame(img, body_parts_list, i, save_path):
     img[img == 255] = 0
-    #out1.write(img)
     img_skeleton = create_skeleton(img,body_parts_list)
-    cv.imwrite("/content/drive/MyDrive/Colab Notebooks/pose/VIDEO1/poses/"+str(i)+".jpg", img_skeleton)
-    #out2.write(img_skeleton)
+    print(save_path + '/' + str(i).zfill(7) + '.jpg')
+    cv.imwrite(save_path + '/' + str(i).zfill(7) + '.jpg', img_skeleton)
 
 
 def create_skeleton(image,body_model):
@@ -844,7 +844,7 @@ def create_skeleton(image,body_model):
   points.append(middle_leg)
   new_image = connect_points(new_image,positions,points)
   #new_image = cv.cvtColor(new_image, cv.COLOR_BGR2RGB)
-  show_image(new_image)
+  # show_image(new_image)
 
   return new_image
 
@@ -899,7 +899,7 @@ def get_TFH(image,face,height):
     return torso_center[0],torso_center[1]
 
 
-def initial_pose(image_R, foreground_image, faces):
+def initial_pose(image_R, foreground_image, faces, foreground_area):
   torso, head, left_upper_arm, right_upper_arm, left_upper_leg, right_upper_leg, left_lower_arm, right_lower_arm, left_lower_leg, right_lower_leg = get_body_tree()
   torso_data = get_torso_model(image_R,faces[0],foreground_image)
   torso.setData(*torso_data)
@@ -930,7 +930,7 @@ def initial_pose(image_R, foreground_image, faces):
   return body_parts_list,bp_priority_based,posterior_prob
 
 
-def build_pose(image_R,foreground_image,body_parts_list,bp_priority_based,posterior_prob,step,out1,out2,frame_num,foreground_area,w):
+def build_pose(image_R, foreground_image, body_parts_list, bp_priority_based, posterior_prob, step, frame_num, foreground_area, w, save_path):
   print("first")
   if(step ==1):
     limit = 30
@@ -1017,22 +1017,20 @@ def build_pose(image_R,foreground_image,body_parts_list,bp_priority_based,poster
   draw_all(foreground_image, body_parts_list)
   
   best_body_parts_list = body_parts_list.copy()
-  image = draw_all(foreground_image, best_body_parts_list,)
-  draw_video_frame(image,body_parts_list,out1,out2,frame_num)
-  return body_parts_list,bp_priority_based,posterior_prob
+  image = draw_all(foreground_image, best_body_parts_list)
+  draw_video_frame(image, body_parts_list, frame_num, save_path)
+  return body_parts_list, bp_priority_based, posterior_prob
 
 
-def complete_video(frames_names_list, foreground_names_list, prev_frames, body_parts_list, bp_priority_based, posterior_prob, main_number):
+def complete_video(frames_names_list, foreground_names_list, prev_frames, body_parts_list, bp_priority_based, posterior_prob, main_number, foreground_area, w, save_path):
   main_body_parts_list = body_parts_list.copy()
   main_bp_priority_based = bp_priority_based.copy()
   main_posterior_prob = posterior_prob.copy()
-  for i in range(main_number-600-1, -1, -1):
+  for i in range(main_number - 1, -1, -1):
     frame = prev_frames[i]
-    print("main = ", main_number)
-    print("number    =  ", i, i+100)
     foreground_image = cv.imread(foreground_names_list[i])
     foreground_image = cv.cvtColor(foreground_image, cv.COLOR_RGB2GRAY)
-    body_parts_list,bp_priority_based,posterior_prob = build_pose(frame,foreground_image,body_parts_list,bp_priority_based,posterior_prob,2,out1,out2,i+600, foreground_area, w)
+    body_parts_list, bp_priority_based, posterior_prob = build_pose(frame, foreground_image, body_parts_list, bp_priority_based, posterior_prob, 2, i+600, foreground_area, w, save_path)
   print("-----------------next---------------")
   body_parts_list = main_body_parts_list.copy()
   bp_priority_based = main_bp_priority_based.copy()
@@ -1041,16 +1039,22 @@ def complete_video(frames_names_list, foreground_names_list, prev_frames, body_p
     frame = cv.imread(frames_names_list[i])
     foreground_image = cv.imread(foreground_names_list[i])
     foreground_image = cv.cvtColor(foreground_image, cv.COLOR_RGB2GRAY)
-    body_parts_list,bp_priority_based,posterior_prob = build_pose(frame,foreground_image,body_parts_list,bp_priority_based,posterior_prob,2,out1,out2,i,foreground_area, w)
+    body_parts_list, bp_priority_based, posterior_prob = build_pose(frame, foreground_image, body_parts_list, bp_priority_based, posterior_prob, 2,i, foreground_area, w, foreground_names_list[i])
 
 
-def get_poses(frames_path, segmented_frames_path):
+def get_poses(frames_path, segmented_frames_path, poses_path):
+  if not os.path.exists(poses_path):
+    os.makedirs(poses_path)
+  
   frames_names = os.listdir(frames_path)
   frames_names = sorted(frames_names)
-  frames_count = len(frames_names)
-  frames_full_names = [frames_path + '/' + frames_names[i] for i in range(frames_count)]
+  
   segmented_frames_names = os.listdir(segmented_frames_path)
   segmented_frames_names = sorted(segmented_frames_names)
+  
+  frames_count = len(segmented_frames_names)
+  
+  frames_full_names = [frames_path + '/' + frames_names[i] for i in range(frames_count)]
   segmented_full_names = [segmented_frames_path + '/' + segmented_frames_names[i] for i in range(frames_count)]
   
   prev_frames = []
@@ -1095,16 +1099,13 @@ def get_poses(frames_path, segmented_frames_path):
   
   posterior_prob = get_posterior_probability(foreground_image, foreground_area, beta, body_parts_list)
 
-  out1 = cv.VideoWriter('/content/drive/MyDrive/Colab Notebooks/pose/VIDEO1/project_rect.mp4',cv.VideoWriter_fourcc(*'DIVX'), 15, (frame.shape[0],frame.shape[1]))
-  out2 = cv.VideoWriter('/content/drive/MyDrive/Colab Notebooks/pose/VIDEO1/project_skel.mp4',cv.VideoWriter_fourcc(*'DIVX'), 15, (frame.shape[0],frame.shape[1]))
-
-  body_parts_list, bp_priority_based, posterior_prob = initial_pose(image_R, foreground_image, faces)
-  body_parts_list, bp_priority_based, posterior_prob,  = build_pose(image_R, foreground_image, body_parts_list, bp_priority_based, posterior_prob, 1, out1, out2, main_number,  foreground_area, w)
+  body_parts_list, bp_priority_based, posterior_prob = initial_pose(image_R, foreground_image, faces, foreground_area)
+  body_parts_list, bp_priority_based, posterior_prob = build_pose(image_R, foreground_image, body_parts_list, bp_priority_based, posterior_prob, 1, main_number,  foreground_area, w, poses_path)
 
   main_body_parts_list1 = body_parts_list.copy()
   main_bp_priority_based1 = bp_priority_based.copy()
   main_posterior_prob1 = posterior_prob.copy()
 
-  complete_video(frames_full_names, segmented_frames_path, prev_frames, body_parts_list, bp_priority_based, posterior_prob, main_number)
+  complete_video(frames_full_names, segmented_frames_path, prev_frames, body_parts_list, bp_priority_based, posterior_prob, main_number, foreground_area, w, poses_path)
 
-get_poses('datasets/source3_frames', 'datasets/source3_segmented')
+get_poses('datasets/sample3', 'datasets/sample3_segmented', 'datasets/sample3_poses')
