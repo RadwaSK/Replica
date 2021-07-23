@@ -8,6 +8,38 @@ from skimage.segmentation import slic
 from skimage.segmentation import mark_boundaries
 
 
+def get_adjacent_black_white_pixels(img):
+    r, c = img.shape
+    white = []
+    black = []
+    
+    for i in range(r):
+        for j in range(c):
+            if (j+1 != c and img[i,j] == 255 and img[i, j+1] == 0):
+                white.append((i,j))
+                black.append((i, j+1))
+            if (j != 0 and img[i,j] == 255 and img[i, j-1] == 0):
+                white.append((i,j))
+                black.append((i, j-1))
+
+    for j in range(c):
+        for i in range(r):
+            if (i+1 != r and img[i,j] == 255 and img[i+1,j] == 0):
+                white.append((i,j))
+                black.append((i+1, j))
+            if (i != 0 and img[i,j] == 255 and img[i-1, j] == 0):
+                white.append((i,j))
+                black.append((i-1, j))
+
+
+    white = np.array(white)
+    white = np.unique(white, axis=0)
+
+    black = np.array(black)
+    black = np.unique(black, axis=0)
+    return white,black
+
+
 def get_saliency_map(img):
     saliency = cv.saliency.StaticSaliencyFineGrained_create()
     _, saliencyMap = saliency.computeSaliency(img)
@@ -215,10 +247,6 @@ def get_medians(frames_count, frames_path, frames_names, num_median=100):
         if end == 1:
             break
     return medians, frame
-
-
-def save_image(path, img):
-    plt.imsave(path, img, cmap='gray', vmin=0, vmax=255)
 
 
 def segment_images(frames_path, segmented_images_path):
