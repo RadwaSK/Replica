@@ -180,7 +180,7 @@ def get_torso_angle(foreImage):
 
 def get_torso_model(image_R,face,img):
   lBody = get_body_height(img)
-  wBody = 0.16 * lBody
+  wBody = 0.17 * lBody
   l = get_torso_length(img, lBody)
   w = get_torso_width(img, wBody)
   x,y= get_TFH(image_R,face,l)
@@ -192,7 +192,7 @@ def get_torso_model(image_R,face,img):
 def get_right_upper_arm_model(torso_center_x, torso_center_y, torso_theta,torso_height, torso_w):
     
     meanHeight = .55 * torso_height
-    varHeight = .03
+    varHeight = .02
     height = np.random.normal(meanHeight, varHeight)
     
     meanW = .2 * torso_w
@@ -212,7 +212,7 @@ def get_right_upper_arm_model(torso_center_x, torso_center_y, torso_theta,torso_
 
 def get_left_upper_arm_model(torso_center_x, torso_center_y,torso_theta, torso_height, torso_w):
     meanHeight = .55 * torso_height
-    varHeight = .03
+    varHeight = .02
     height = np.random.normal(meanHeight, varHeight)
     
     meanW = .2 * torso_w
@@ -232,7 +232,7 @@ def get_left_upper_arm_model(torso_center_x, torso_center_y,torso_theta, torso_h
 
 def get_right_lower_arm_model(end_x, end_y, torso_height, torso_w):
     meanHeight = .55 * torso_height
-    varHeight = .03
+    varHeight = .02
     height = np.random.normal(meanHeight, varHeight)
     
     meanW = .2 * torso_w
@@ -252,7 +252,7 @@ def get_right_lower_arm_model(end_x, end_y, torso_height, torso_w):
 
 def get_left_lower_arm_model(end_x, end_y, torso_height, torso_w):
     meanHeight = .55 * torso_height
-    varHeight = .03
+    varHeight = .02
     height = np.random.normal(meanHeight, varHeight)
     
     meanW = .2 * torso_w
@@ -272,7 +272,7 @@ def get_left_lower_arm_model(end_x, end_y, torso_height, torso_w):
 
 def get_left_upper_leg_model(torso_center_x,torso_center_y,torso_theta,torso_height,torso_w):
     meanHeight = .7* torso_height
-    varHeight = .04
+    varHeight = .01
     height = np.random.normal(meanHeight, varHeight)
     
     meanW = .35 * torso_w
@@ -295,7 +295,7 @@ def get_left_upper_leg_model(torso_center_x,torso_center_y,torso_theta,torso_hei
 
 def get_right_upper_leg_model(torso_center_x, torso_center_y,torso_theta, torso_height, torso_w):
     meanHeight = .7 * torso_height
-    varHeight = .04
+    varHeight = .01
     height = np.random.normal(meanHeight, varHeight)
     
     meanW = .34 * torso_w
@@ -316,7 +316,7 @@ def get_right_upper_leg_model(torso_center_x, torso_center_y,torso_theta, torso_
 
 def get_left_lower_leg_model(end_x, end_y, torso_height, torso_w):
     meanHeight = .7 * torso_height
-    varHeight = .04
+    varHeight = .01
     height = np.random.normal(meanHeight, varHeight)
     
     meanW = .35* torso_w
@@ -336,7 +336,7 @@ def get_left_lower_leg_model(end_x, end_y, torso_height, torso_w):
 
 def get_right_lower_leg_model(end_x, end_y, torso_height, torso_w):
     meanHeight = .7 * torso_height
-    varHeight = .04
+    varHeight = .01
     height = np.random.normal(meanHeight, varHeight)
     
     meanW = .34 * torso_w
@@ -931,7 +931,7 @@ def initial_pose(image_R, foreground_image, faces, foreground_area):
 
 def build_pose(image_R, foreground_image, body_parts_list, bp_priority_based, posterior_prob, step, frame_num, foreground_area, w, save_path):
   if(step ==1):
-    limit = 30
+    limit = 20
   else:
     limit=15
 
@@ -946,21 +946,17 @@ def build_pose(image_R, foreground_image, body_parts_list, bp_priority_based, po
       bp = body_parts_list[i]
     else:
       bp = bp_priority_based[0]
-      
-    if bp_priority_based[0].priority < 0.67:
-      break
+      if bp_priority_based[0].priority < 0.71:
+        break
+  
 
     bp.visited += 1
     
-    for k in range(30):
+    for k in range(20):
       posterior_prob =get_posterior_probability(foreground_image, foreground_area, beta, body_parts_list) 
-      j, diff = change_value(bp)
-      if bp.name == 'Torso' or bp.name == 'Left Upper Arm' or bp.name == 'Right Upper Arm' or bp.name == 'Left Upper Leg' or bp.name == 'Right Upper Leg':
-          update_child(bp)
-      update_all_priorities(foreground_image, body_parts_list, w)
       cur_priority = bp.priority
       cur_post = get_posterior_probability(foreground_image, foreground_area, beta, body_parts_list)
-      if(((bp.priority > 0.85 and bp.visited>3) or (bp.priority > 0.7 and bp.visited>6) ) and step ==1   ):
+      if(((bp.priority > 1 and bp.visited>3) or (bp.priority > 0.95 and bp.visited>6) ) and step ==1   ):
           bp.updateValue(j,45)
           update_all_priorities(foreground_image, body_parts_list, w)
           temp_posterior = get_posterior_probability(foreground_image, foreground_area, beta, body_parts_list)
@@ -974,7 +970,11 @@ def build_pose(image_R, foreground_image, body_parts_list, bp_priority_based, po
           elif(cur_priority<1.3 and cur_post > new_posterior and cur_post>temp_posterior ):
               bp.updateValue(j,-45)
               update_all_priorities(foreground_image, body_parts_list, w)
-
+              
+      j, diff = change_value(bp)
+      if bp.name == 'Torso' or bp.name == 'Left Upper Arm' or bp.name == 'Right Upper Arm' or bp.name == 'Left Upper Leg' or bp.name == 'Right Upper Leg':
+          update_child(bp)
+      update_all_priorities(foreground_image, body_parts_list, w)
         
       new_posterior = get_posterior_probability(foreground_image, foreground_area, beta, body_parts_list)
 
