@@ -174,7 +174,8 @@ def get_torso_angle(foreImage):
     theta = np.arctan(deltaY/deltaX) * 180.0 / np.pi
   else:
     theta = 90.0
-  return abs(90 - theta)
+  return 360
+  #return abs(90 - theta)
 
 
 def get_torso_model(image_R,face,img):
@@ -531,7 +532,6 @@ def draw_bounding_lines(img, data):
   return image
 
 
-# FLAG !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 def face_detection(image, foreground_image):
   gray  = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
   faceCascade = cv.CascadeClassifier("frontface_info.xml")
@@ -689,7 +689,6 @@ def update_child(bp):
         else:
             (x,y) = get_right_lower_corner(bp.x, bp.y, bp.theta, bp.l, bp.w,True)
             x = x - (.5 * child_bp.w)
-        print('updating child ', child_bp.name)
         child_bp.setData(x, y, child_bp.theta, child_bp.l, child_bp.w)
             
   else:
@@ -698,7 +697,6 @@ def update_child(bp):
     if bp.name == 'head':
         pass
     child_bp = bp.children[0]
-    print('updating child ', child_bp.name)
     child_bp.setData(x, y, child_bp.theta, child_bp.l, child_bp.w)
 
 
@@ -706,7 +704,6 @@ def update_parent(bp):
   parent_bp = bp.parent
   y = bp.y - (parent_bp.l * math.sin(math.radians(parent_bp.theta)))
   x = bp.x - (parent_bp.l * math.cos(math.radians(parent_bp.theta)))
-  print('updating parent ', parent_bp.name)
   parent_bp.setData(x, y, parent_bp.theta, parent_bp.l, parent_bp.w)
 
 
@@ -752,8 +749,10 @@ def draw_all(img,body_parts_list):
 def draw_video_frame(img, body_parts_list, i, save_path):
     img[img == 255] = 0
     img_skeleton = create_skeleton(img,body_parts_list)
-    print(save_path + '/' + str(i).zfill(7) + '.jpg')
-    cv.imwrite(save_path + '/' + str(i).zfill(7) + '.jpg', img_skeleton)
+    
+    name = save_path + '/' + str(i).zfill(7) + '.jpg'
+    print("Saving frame", name)
+    cv.imwrite(name, img_skeleton)
 
 
 def create_skeleton(image,body_model):
@@ -931,7 +930,6 @@ def initial_pose(image_R, foreground_image, faces, foreground_area):
 
 
 def build_pose(image_R, foreground_image, body_parts_list, bp_priority_based, posterior_prob, step, frame_num, foreground_area, w, save_path):
-  print("first")
   if(step ==1):
     limit = 30
   else:
@@ -944,26 +942,16 @@ def build_pose(image_R, foreground_image, body_parts_list, bp_priority_based, po
   init_visited(body_parts_list)
   
   for i in range(limit):
-    print("second")
     if i < 9:
-      print("third")
       bp = body_parts_list[i]
-      print(bp.name)
-      print(bp.priority)
-      print(bp_priority_based[0].name)
-      print(bp_priority_based[0].priority)
     else:
       bp = bp_priority_based[0]
-      print(bp.name)
-      print(bp.priority)
-
+      
     if bp_priority_based[0].priority < 0.67:
-      print("noooooo")
       break
 
-    print('\n=========================', bp.name, '============================')
-    bp.visited+=1
-    print(bp.priority)  
+    bp.visited += 1
+    
     for k in range(30):
       posterior_prob =get_posterior_probability(foreground_image, foreground_area, beta, body_parts_list) 
       j, diff = change_value(bp)
@@ -973,7 +961,6 @@ def build_pose(image_R, foreground_image, body_parts_list, bp_priority_based, po
       cur_priority = bp.priority
       cur_post = get_posterior_probability(foreground_image, foreground_area, beta, body_parts_list)
       if(((bp.priority > 0.85 and bp.visited>3) or (bp.priority > 0.7 and bp.visited>6) ) and step ==1   ):
-          print("jump....")
           bp.updateValue(j,45)
           update_all_priorities(foreground_image, body_parts_list, w)
           temp_posterior = get_posterior_probability(foreground_image, foreground_area, beta, body_parts_list)
@@ -1014,6 +1001,7 @@ def build_pose(image_R, foreground_image, body_parts_list, bp_priority_based, po
     draw_all(foreground_image, body_parts_list)
     update_all_priorities(foreground_image, body_parts_list, w)
     bp_priority_based = sorted(bp_priority_based, reverse=True, key=lambda x: x.priority)
+  
   draw_all(foreground_image, body_parts_list)
   
   best_body_parts_list = body_parts_list.copy()
@@ -1023,6 +1011,7 @@ def build_pose(image_R, foreground_image, body_parts_list, bp_priority_based, po
 
 
 def complete_video(frames_names_list, foreground_names_list, prev_frames, body_parts_list, bp_priority_based, posterior_prob, main_number, foreground_area, w, save_path):
+  frames_count = len(frames_names_list)
   main_body_parts_list = body_parts_list.copy()
   main_bp_priority_based = bp_priority_based.copy()
   main_posterior_prob = posterior_prob.copy()
@@ -1030,16 +1019,16 @@ def complete_video(frames_names_list, foreground_names_list, prev_frames, body_p
     frame = prev_frames[i]
     foreground_image = cv.imread(foreground_names_list[i])
     foreground_image = cv.cvtColor(foreground_image, cv.COLOR_RGB2GRAY)
-    body_parts_list, bp_priority_based, posterior_prob = build_pose(frame, foreground_image, body_parts_list, bp_priority_based, posterior_prob, 2, i+600, foreground_area, w, save_path)
-  print("-----------------next---------------")
+    body_parts_list, bp_priority_based, posterior_prob = build_pose(frame, foreground_image, body_parts_list, bp_priority_based, posterior_prob, 2, i, foreground_area, w, save_path)
+  
   body_parts_list = main_body_parts_list.copy()
   bp_priority_based = main_bp_priority_based.copy()
   posterior_prob = main_posterior_prob.copy()
-  for i in range(main_number+1,650):
+  for i in range(main_number+1, frames_count):
     frame = cv.imread(frames_names_list[i])
     foreground_image = cv.imread(foreground_names_list[i])
     foreground_image = cv.cvtColor(foreground_image, cv.COLOR_RGB2GRAY)
-    body_parts_list, bp_priority_based, posterior_prob = build_pose(frame, foreground_image, body_parts_list, bp_priority_based, posterior_prob, 2,i, foreground_area, w, foreground_names_list[i])
+    body_parts_list, bp_priority_based, posterior_prob = build_pose(frame, foreground_image, body_parts_list, bp_priority_based, posterior_prob, 2, i, foreground_area, w, save_path)
 
 
 def get_poses(frames_path, segmented_frames_path, poses_path):
@@ -1106,6 +1095,5 @@ def get_poses(frames_path, segmented_frames_path, poses_path):
   main_bp_priority_based1 = bp_priority_based.copy()
   main_posterior_prob1 = posterior_prob.copy()
 
-  complete_video(frames_full_names, segmented_frames_path, prev_frames, body_parts_list, bp_priority_based, posterior_prob, main_number, foreground_area, w, poses_path)
+  complete_video(frames_full_names, segmented_full_names, prev_frames, body_parts_list, bp_priority_based, posterior_prob, main_number, foreground_area, w, poses_path)
 
-get_poses('datasets/sample3', 'datasets/sample3_segmented', 'datasets/sample3_poses')
