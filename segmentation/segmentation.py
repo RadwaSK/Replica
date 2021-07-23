@@ -40,6 +40,156 @@ def get_adjacent_black_white_pixels(img):
     return white,black
 
 
+def get_adjacent_pairs(img,clusters):
+    r, c = img.shape
+    pairs = []
+    
+    for i in range(r):
+        for j in range(c):
+            if (j+1 != c and img[i,j] == 255 and img[i, j+1] == 0):
+                white = clusters[i,j]
+                black = clusters[i, j+1]
+                pairs.append((white,black))
+            if (j != 0 and img[i,j] == 255 and img[i, j-1] == 0):
+                white = clusters[i,j]
+                black = clusters[i, j-1]
+                pairs.append((white,black))
+
+    for j in range(c):
+        for i in range(r):
+            if (i+1 != r and img[i,j] == 255 and img[i+1,j] == 0):
+                white = clusters[i,j]
+                black = clusters[i+1, j]
+                pairs.append((white,black))
+            if (i != 0 and img[i,j] == 255 and img[i-1, j] == 0):
+                white = clusters[i,j]
+                black = clusters[i-1, j]
+                pairs.append((white,black))
+
+    return pairs
+
+
+def color_thresholding_cs(seg_img,clusters, cielab):
+    #get foreground background adjacent pairs
+    adj_pairs = get_adjacent_pairs(seg_img,clusters)
+    cs, distance_list = compute_cs(adj_pairs, cielab)
+    
+    repeat = False
+   
+    updated_img = np.copy(seg_img)
+    while True:
+        invert_list = []
+        for pair,dst in zip(adj_pairs,distance_list):
+            if (dst > cs):
+                invert_list.append(pair[1])
+                repeat = True
+        for reg in invert_list:
+            pts = np.argwhere(clusters == reg)
+            for x,y in pts:
+                updated_img[x,y] = 255
+        #show_image(updated_img)
+        if repeat:
+            #The relabeling is repeated until there is no change in the labels of the segments.
+            adj_pairs = get_adjacent_clusters(updated_img, clusters)
+            cs, distance_list = compute_cs(adj_pairs, cielab)
+            repeat = False
+        else:
+            break
+            
+    return updated_img
+
+
+def color_color_thresholding_cp(binary_img, cielab, foreground, background):
+    white,black = get_adjacent_black_white_pixels(binary_img)
+    cp, distance_list = compute_cp(white, black, cielab)
+    
+    repeat = False
+    
+    while True:
+        for dst, w in zip(distance_list,white):
+            if dst < cp:
+                binary_img[w[0]][w[1]] = 0
+                repeat = True
+        if repeat:
+            white,black = get_adjacent_black_white_pixels(binary_img)
+            cp, distance_list = compute_cp(foreground, background, cielab)
+            repeat = False
+        else:
+            break
+            
+        return binary_img
+            
+
+def optical_flow(cap):
+  _, frame0 = cap.read()
+  _, frame1 = cap.read()
+  for i in range(5):
+    _, frame2 = cap.read()
+  frame1 = cv.cvtColor(frame1,cv.COLOR_BGR2RGB)
+  gray = color.rgb2gray(frame1)
+
+  next = cv.cvtColor(frame2,cv.COLOR_BGR2GRAY)
+  prvs = cv.cvtColor(frame0,cv.COLOR_BGR2GRAY)
+  flowprev = cv.calcOpticalFlowFarneback(prvs,gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+  flownext = cv.calcOpticalFlowFarneback(next,gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+  mag1, ang1 = cv.cartToPolar(flowprev[...,0], flowprev[...,1])
+  mag2, ang2 = cv.cartToPolar(flownext[...,0], flownext[...,1])
+  u = (mag1*np.cos((180/np.pi/2)*ang1) + mag2*np.cos((180/np.pi/2)*ang2))/2
+  v = (mag1*np.cos((180/np.pi/2)*ang1) + mag2*np.cos((180/np.pi/2)*ang2))/2
+  max = np.max(u)
+  u = u*(255/max)
+  #show_image(u)
+  max = np.max(v)
+  v = v*(255/max)
+  diff = cv.absdiff(next, prvs)
+  gray = diff.copy()
+  gray[gray > 10]  = 255
+  gray[gray <= 10] = 0
+  gray = cv.dilate(gray, None, iterations=4)
+  gray = cv.erode (gray, None, iterations=4)
+  #show_image(diff)
+  show_image(gray)
+  gray_plus = gray.copy()
+  gray_plus[gray == 255] = 2
+
+  #nehal's variable
+  diff_img = np.copy(gray)
+
+  return frame1,u,v,diff_img
+
+
+def get_adjacent_black_white_pixels(img):
+    r, c = img.shape
+    white = []
+    black = []
+    
+    for i in range(r):
+        for j in range(c):
+            if (j+1 != c and img[i,j] == 255 and img[i, j+1] == 0):
+                white.append((i,j))
+                black.append((i, j+1))
+            if (j != 0 and img[i,j] == 255 and img[i, j-1] == 0):
+                white.append((i,j))
+                black.append((i, j-1))
+
+    for j in range(c):
+        for i in range(r):
+            if (i+1 != r and img[i,j] == 255 and img[i+1,j] == 0):
+                white.append((i,j))
+                black.append((i+1, j))
+            if (i != 0 and img[i,j] == 255 and img[i-1, j] == 0):
+                white.append((i,j))
+                black.append((i-1, j))
+
+
+    white = np.array(white)
+    white = np.unique(white, axis=0)
+
+    black = np.array(black)
+    black = np.unique(black, axis=0)
+    return white,black
+
+
 def get_saliency_map(img):
     saliency = cv.saliency.StaticSaliencyFineGrained_create()
     _, saliencyMap = saliency.computeSaliency(img)
