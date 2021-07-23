@@ -1,4 +1,4 @@
-from utils import read_and_save
+from GAN.utils import read_and_save
 import numpy as np
 import os
 import matplotlib.pyplot as plt
